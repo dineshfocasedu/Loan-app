@@ -16,6 +16,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://vattiapp.netlify.app",
+  "https://loan-app-client.vercel.app/login",
   "https://september-subsphenoid-celia.ngrok-free.dev",
 ];
 

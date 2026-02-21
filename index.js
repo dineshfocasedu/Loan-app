@@ -89,11 +89,10 @@ if (process.env.NODE_ENV !== "production") {
 ========================= */
 
 module.exports = async (req, res) => {
-  // Force CORS headers for Vercel
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    "https://loan-app-client.vercel.app"
-  );
+  // Force CORS headers for frontend domain
+  const allowedOrigin = "https://loan-app-client.vercel.app";
+
+  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET,POST,PUT,DELETE,OPTIONS"
@@ -103,11 +102,12 @@ module.exports = async (req, res) => {
     "Content-Type, Authorization"
   );
 
-  // Handle preflight request
+  // Handle preflight OPTIONS
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
+  // Connect to MongoDB if not connected
   if (mongoose.connection.readyState === 0) {
     await connectDB();
   }

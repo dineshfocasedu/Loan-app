@@ -89,8 +89,28 @@ if (process.env.NODE_ENV !== "production") {
 ========================= */
 
 module.exports = async (req, res) => {
+  // Force CORS headers for Vercel
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "https://loan-app-client.vercel.app"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (mongoose.connection.readyState === 0) {
     await connectDB();
   }
+
   return app(req, res);
 };

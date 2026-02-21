@@ -15,6 +15,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "https://vattiapp.netlify.app",
   "https://september-subsphenoid-celia.ngrok-free.dev",
 ];
 

@@ -12,12 +12,23 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
-app.use("/", (req, res) => {
-  console.log("Server is running")
-  res.send("Server is Running")
-})
 
-module.exports = async (req, res) => {
-  await connectDB();
-  return app(req, res);
+app.get("/", (req, res) => {
+  console.log("Server is running");
+  res.send("Server is Running");
+});
+
+const PORT = process.env.PORT || 5000;
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Server failed to start:", error);
+  }
 };
+
+startServer();

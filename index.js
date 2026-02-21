@@ -8,10 +8,12 @@ const memberRoutes = require("./routes/memberRoutes");
 
 const app = express();
 
-/* =========================
-   CORS CONFIGURATION
-========================= */
+// =========================
+// MIDDLEWARE
+// =========================
+app.use(express.json());
 
+// CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -19,32 +21,23 @@ const allowedOrigins = [
   "https://loan-app-client.vercel.app",
   "https://loan-app-client-4uyfuf8yo-focas.vercel.app",
   "https://loan-app-client-git-main-focas.vercel.app",
-  "https://september-subsphenoid-celia.ngrok-free.dev",
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow non-browser requests (like Postman)
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow Postman or server requests
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+};
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(null, false);
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
+app.use(cors(corsOptions));
 
-app.use(express.json());
-
-/* =========================
-   ROUTES
-========================= */
-
+// =========================
+// ROUTES
+// =========================
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
 
@@ -52,65 +45,58 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "Server is running" });
 });
 
-/* =========================
-   DATABASE CONNECTION
-========================= */
-
+// =========================
+// DATABASE CONNECTION
+// =========================
 const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) return; // already connected
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("✅ MongoDB Connected");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
-    process.exit(1);
+    throw error;
   }
 };
 
-/* =========================
-   SERVER START (LOCAL ONLY)
-========================= */
-
-const PORT = process.env.PORT || 5000;
-
-if (process.env.NODE_ENV !== "production") {
-  const startServer = async () => {
-    await connectDB();
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
-  };
-
-  startServer();
-}
-
-/* =========================
-   EXPORT FOR VERCEL
-========================= */
-
+// =========================
+// VERCEL SERVERLESS EXPORT
+// =========================
 module.exports = async (req, res) => {
-  // Force CORS headers for frontend domain
-  const allowedOrigin = "https://loan-app-client.vercel.app";
-
-  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,DELETE,OPTIONS"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
-
-  // Handle preflight OPTIONS
+  // Handle CORS preflight manually for serverless
   if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,DELETE,OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      req.headers["access-control-request-headers"] || "Content-Type, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     return res.status(200).end();
   }
 
-  // Connect to MongoDB if not connected
-  if (mongoose.connection.readyState === 0) {
+  // Connect to MongoDB
+  try {
     await connectDB();
+  } catch (err) {
+    return res.status(500).json({ message: "Database connection error" });
   }
 
+  // Pass request to Express app
   return app(req, res);
 };
+
+// =========================
+// LOCAL SERVER (for dev only)
+// =========================
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  });
+}

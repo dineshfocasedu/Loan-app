@@ -9,33 +9,31 @@ const memberRoutes = require("./routes/memberRoutes");
 const app = express();
 
 /* =========================
-   CORS CONFIGURATIONs
+   CORS CONFIGURATION
 ========================= */
 
 const allowedOrigins = [
-  "http://localhost:5173", // local frontend
+  "http://localhost:5173",
   "http://localhost:3000",
-  "https://september-subsphenoid-celia.ngrok-free.dev", // ngrok frontend
+  "https://september-subsphenoid-celia.ngrok-free.dev",
 ];
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow non-browser requests
+    origin: (origin, callback) => {
+      // Allow non-browser requests (like Postman)
+      if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        return callback(null, false);
       }
     },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
-
-// Handle preflight
-app.options("*", cors());
 
 app.use(express.json());
 
@@ -57,31 +55,38 @@ app.get("/", (req, res) => {
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB Connected");
+    console.log("✅ MongoDB Connected");
   } catch (error) {
-    console.error("MongoDB connection error:", error);
+    console.error("❌ MongoDB connection error:", error.message);
     process.exit(1);
   }
 };
 
 /* =========================
-   SERVER START
+   SERVER START (LOCAL ONLY)
 ========================= */
 
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  await connectDB();
+if (process.env.NODE_ENV !== "production") {
+  const startServer = async () => {
+    await connectDB();
 
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-};
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  };
 
-startServer();
+  startServer();
+}
 
 /* =========================
    EXPORT FOR VERCEL
 ========================= */
 
-module.exports = app;
+module.exports = async (req, res) => {
+  if (mongoose.connection.readyState === 0) {
+    await connectDB();
+  }
+  return app(req, res);
+};
